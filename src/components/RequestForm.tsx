@@ -25,10 +25,10 @@ const PlusIcon = () => (
 );
 
 const TrashIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 group-hover:text-red-600 transition-colors">
-        <polyline points="3 6 5 6 21 6"></polyline>
-        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-    </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 group-hover:text-red-600 transition-colors">
+    <polyline points="3 6 5 6 21 6"></polyline>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+  </svg>
 );
 
 
@@ -36,7 +36,7 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
   const [requesterName, setRequesterName] = useState('');
   const [requesterEmail, setRequesterEmail] = useState('');
   const [employees, setEmployees] = useState<EmployeeInput[]>([{ key: Date.now(), name: '', id: '' }]);
-  
+
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
@@ -61,7 +61,7 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
     } else if (!/\S+@\S+\.\S+/.test(requesterEmail)) {
       newErrors.requesterEmail = '有効なメールアドレスを入力してください。';
     }
-    
+
     let hasEmployeeErrors = false;
     const employeeErrors = employees.map(emp => {
       const singleEmployeeErrors: { name?: string; id?: string } = {};
@@ -106,7 +106,7 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
     setTimeout(() => setShowSuccessAlert(false), 5000);
   };
 
-  const FormField: React.FC<{ label: string; id: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; type?: string; error?: string }> = 
+  const FormField: React.FC<{ label: string; id: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; type?: string; error?: string }> =
     ({ label, id, value, onChange, type = 'text', error }) => (
       <div>
         <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
@@ -116,11 +116,10 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
           value={value}
           onChange={onChange}
           className={`w-full p-3 border rounded-md shadow-sm transition-colors ${error ? 'border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50'}`}
-          required
         />
         {error && <p className="text-red-600 text-xs mt-1">{error}</p>}
       </div>
-  );
+    );
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -139,7 +138,7 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
               <FormField label="依頼者メールアドレス" id="requesterEmail" value={requesterEmail} onChange={(e) => setRequesterEmail(e.target.value)} type="email" error={errors.requesterEmail} />
             </div>
           </fieldset>
-          
+
           <fieldset>
             <legend className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">ロック解除を依頼する社員の情報</legend>
             <div className="space-y-4">
@@ -190,15 +189,15 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
       >
         <p className="text-sm text-gray-600">この内容で提出しますか？</p>
         <div className="mt-4 space-y-3 text-sm">
-            <div><strong>依頼者:</strong> {requesterName}</div>
-            <div>
-              <strong className="block mb-1">対象社員 ({employees.length}名):</strong>
-              <ul className="list-disc list-inside bg-gray-50 p-2 rounded-md">
-                {employees.map(emp => (
-                  <li key={emp.key} className="text-gray-700">{emp.name} (社員番号: {emp.id})</li>
-                ))}
-              </ul>
-            </div>
+          <div><strong>依頼者:</strong> {requesterName}</div>
+          <div>
+            <strong className="block mb-1">対象社員 ({employees.length}名):</strong>
+            <ul className="list-disc list-inside bg-gray-50 p-2 rounded-md">
+              {employees.map(emp => (
+                <li key={emp.key} className="text-gray-700">{emp.name} (社員番号: {emp.id})</li>
+              ))}
+            </ul>
+          </div>
         </div>
       </Modal>
     </div>
