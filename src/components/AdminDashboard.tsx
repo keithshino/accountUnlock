@@ -4,16 +4,27 @@ import { TASK_STATUS_OPTIONS, REPORT_STATUS_OPTIONS } from '../constants';
 import Modal from './Modal';
 
 interface AdminDashboardProps {
-  tasks: Task[];
-  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+    tasks: Task[];
+    setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
 }
 
-const SearchIcon: React.FC<{className?: string}> = ({className}) => (
+const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
         <circle cx="11" cy="11" r="8"></circle>
         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
     </svg>
 );
+
+// ★★★ 日付を読みやすい形式に変換する関数 ★★★
+const formatDate = (timestamp: any) => {
+    if (timestamp && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate().toLocaleString('ja-JP', {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit',
+        });
+    }
+    return String(timestamp); // Fallback for other data types
+};
 
 const EditTaskModal: React.FC<{
     task: Task;
@@ -51,10 +62,11 @@ const EditTaskModal: React.FC<{
             }
         >
             <div className="space-y-4 text-sm">
-                <div><strong>受付日時:</strong> {task.createdAt}</div>
+                {/* ★★★ 修正ポイント１ ★★★ */}
+                <div><strong>受付日時:</strong> {formatDate(task.createdAt)}</div>
                 <div><strong>依頼者:</strong> {task.requesterName} ({task.requesterEmail})</div>
                 <div><strong>対象社員:</strong> {task.employeeName} (社員番号: {task.employeeId})</div>
-                <hr/>
+                <hr />
                 <div className="space-y-2">
                     <div>
                         <label htmlFor="status" className="block font-medium text-gray-700">Status</label>
@@ -97,7 +109,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ tasks, setTasks }) => {
         };
         return `${baseClasses} ${colorMap[status]}`;
     };
-    
+
     const getReportStatusBadge = (status: ReportStatus) => {
         const baseClasses = 'px-3 py-1 text-xs font-semibold rounded-full inline-block';
         const colorMap: Record<ReportStatus, string> = {
@@ -107,7 +119,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ tasks, setTasks }) => {
         return `${baseClasses} ${colorMap[status]}`;
     };
 
-    const sortedTasks = [...tasks].sort((a, b) => b.id - a.id);
+    const sortedTasks = [...tasks].sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+        return dateB - dateA;
+    });
 
     return (
         <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
@@ -125,7 +141,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ tasks, setTasks }) => {
                         {sortedTasks.map((task) => (
                             <tr key={task.id} className="hover:bg-gray-50 transition-colors">
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{task.id}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.createdAt}</td>
+                                {/* ★★★ 修正ポイント２ ★★★ */}
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(task.createdAt)}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.requesterName}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.employeeId}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.employeeName}</td>
@@ -133,7 +150,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ tasks, setTasks }) => {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm"><span className={getReportStatusBadge(task.reportStatus)}>{task.reportStatus}</span></td>
                                 <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                     <button onClick={() => setSelectedTask(task)} className="text-blue-600 hover:text-blue-900 flex items-center gap-1 p-2 rounded-md hover:bg-blue-100 transition-colors">
-                                        <SearchIcon className="inline"/>
+                                        <SearchIcon className="inline" />
                                         <span className="hidden sm:inline">詳細</span>
                                     </button>
                                 </td>
@@ -141,7 +158,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ tasks, setTasks }) => {
                         ))}
                     </tbody>
                 </table>
-                 {sortedTasks.length === 0 && (
+                {sortedTasks.length === 0 && (
                     <div className="text-center py-10 text-gray-500">
                         現在、アクティブな依頼はありません。
                     </div>

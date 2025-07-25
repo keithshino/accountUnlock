@@ -1,6 +1,7 @@
 // Firebaseから必要な機能をインポートする
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 // ★★★★★ ここに、さっきコピーした自分の接続コードを貼り付ける！ ★★★★★
 const firebaseConfig = {
@@ -19,3 +20,5 @@ const app = initializeApp(firebaseConfig);
 // Authentication（認証）の機能を初期化して、エクスポートする
 // これで、他のファイルからauthが使えるようになるっちゃん
 export const auth = getAuth(app);
+
+export const db = getFirestore(app);

@@ -1,5 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
+
+interface UserProfile {
+  name: string;
+  company: string;
+  email: string;
+  phone?: string;
+}
 
 interface RequestFormProps {
   onAddTasks: (task: {
@@ -7,6 +14,7 @@ interface RequestFormProps {
     requesterEmail: string;
     employees: { employeeName: string; employeeId: string }[];
   }) => void;
+  userProfile: UserProfile | null;
 }
 
 interface EmployeeInput {
@@ -63,7 +71,8 @@ const FormField: React.FC<{
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   type?: string;
   error?: string;
-}> = ({ label, id, value, onChange, type = 'text', error }) => (
+  disabled?: boolean;
+}> = ({ label, id, value, onChange, type = 'text', error, disabled = false }) => (
   <div>
     <label
       htmlFor={id}
@@ -76,17 +85,17 @@ const FormField: React.FC<{
       id={id}
       value={value}
       onChange={onChange}
-      className={`w-full p-3 border rounded-md shadow-sm transition-colors ${
-        error
-          ? 'border-red-500 bg-red-50'
-          : 'border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50'
-      }`}
+      disabled={disabled}
+      className={`w-full p-3 border rounded-md shadow-sm transition-colors ${error
+        ? 'border-red-500 bg-red-50'
+        : 'border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50'
+        }`}
     />
     {error && <p className="text-red-600 text-xs mt-1">{error}</p>}
   </div>
 );
 
-const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
+const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks, userProfile }) => {
   const [requesterName, setRequesterName] = useState('');
   const [requesterEmail, setRequesterEmail] = useState('');
   const [employees, setEmployees] = useState<EmployeeInput[]>([
@@ -96,6 +105,13 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
+
+  useEffect(() => {
+    if (userProfile) {
+      setRequesterName(userProfile.name);
+      setRequesterEmail(userProfile.email);
+    }
+  }, [userProfile]);
 
   const handleAddEmployee = () => {
     setEmployees([...employees, { key: Date.now(), name: '', id: '' }]);
@@ -194,21 +210,8 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
               あなたの情報
             </legend>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                label="依頼者氏名"
-                id="requesterName"
-                value={requesterName}
-                onChange={(e) => setRequesterName(e.target.value)}
-                error={errors.requesterName}
-              />
-              <FormField
-                label="依頼者メールアドレス"
-                id="requesterEmail"
-                value={requesterEmail}
-                onChange={(e) => setRequesterEmail(e.target.value)}
-                type="email"
-                error={errors.requesterEmail}
-              />
+              <FormField label="依頼者氏名" id="requesterName" value={requesterName} onChange={(e) => setRequesterName(e.target.value)} error={errors.requesterName} disabled />
+              <FormField label="依頼者メールアドレス" id="requesterEmail" value={requesterEmail} onChange={(e) => setRequesterEmail(e.target.value)} type="email" error={errors.requesterEmail} disabled />
             </div>
           </fieldset>
 
@@ -241,11 +244,10 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
                             e.target.value
                           )
                         }
-                        className={`w-full p-3 border rounded-md shadow-sm transition-colors ${
-                          errors.employees?.[index]?.name
-                            ? 'border-red-500 bg-red-50'
-                            : 'border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50'
-                        }`}
+                        className={`w-full p-3 border rounded-md shadow-sm transition-colors ${errors.employees?.[index]?.name
+                          ? 'border-red-500 bg-red-50'
+                          : 'border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50'
+                          }`}
                       />
                       {errors.employees?.[index]?.name && (
                         <p className="text-red-600 text-xs mt-1">
@@ -271,11 +273,10 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
                             e.target.value
                           )
                         }
-                        className={`w-full p-3 border rounded-md shadow-sm transition-colors ${
-                          errors.employees?.[index]?.id
-                            ? 'border-red-500 bg-red-50'
-                            : 'border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50'
-                        }`}
+                        className={`w-full p-3 border rounded-md shadow-sm transition-colors ${errors.employees?.[index]?.id
+                          ? 'border-red-500 bg-red-50'
+                          : 'border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50'
+                          }`}
                       />
                       {errors.employees?.[index]?.id && (
                         <p className="text-red-600 text-xs mt-1">
