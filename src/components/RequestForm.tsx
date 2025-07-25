@@ -31,6 +31,23 @@ const TrashIcon = () => (
   </svg>
 );
 
+// ★★★ 修正ポイント ★★★
+// FormFieldコンポーネントをRequestFormの外に定義する
+const FormField: React.FC<{ label: string; id: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; type?: string; error?: string }> =
+  ({ label, id, value, onChange, type = 'text', error }) => (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <input
+        type={type}
+        id={id}
+        value={value}
+        onChange={onChange}
+        className={`w-full p-3 border rounded-md shadow-sm transition-colors ${error ? 'border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50'}`}
+      />
+      {error && <p className="text-red-600 text-xs mt-1">{error}</p>}
+    </div>
+  );
+
 
 const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
   const [requesterName, setRequesterName] = useState('');
@@ -106,20 +123,7 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
     setTimeout(() => setShowSuccessAlert(false), 5000);
   };
 
-  const FormField: React.FC<{ label: string; id: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; type?: string; error?: string }> =
-    ({ label, id, value, onChange, type = 'text', error }) => (
-      <div>
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-        <input
-          type={type}
-          id={id}
-          value={value}
-          onChange={onChange}
-          className={`w-full p-3 border rounded-md shadow-sm transition-colors ${error ? 'border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50'}`}
-        />
-        {error && <p className="text-red-600 text-xs mt-1">{error}</p>}
-      </div>
-    );
+  // FormFieldコンポーネントは外に移動したので、ここからは削除！
 
   return (
     <div className="max-w-3xl mx-auto">
