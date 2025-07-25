@@ -1,0 +1,5 @@
+{
+  "name": "Account Unlock Management System",
+  "description": "An internal web application for requesting and managing account unlock tasks. It features a requester form and an admin dashboard to track the status of each request.",
+  "requestFramePermissions": []
+}
