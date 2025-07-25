@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react'; // ★ 1. useCallback を import に追加！
 import Modal from './Modal';
 
 interface RequestFormProps {
@@ -31,8 +31,6 @@ const TrashIcon = () => (
   </svg>
 );
 
-// ★★★ 修正ポイント ★★★
-// FormFieldコンポーネントをRequestFormの外に定義する
 const FormField: React.FC<{ label: string; id: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; type?: string; error?: string }> =
   ({ label, id, value, onChange, type = 'text', error }) => (
     <div>
@@ -66,9 +64,20 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
     setEmployees(employees.filter(emp => emp.key !== keyToRemove));
   };
 
-  const handleEmployeeChange = (key: number, field: 'name' | 'id', value: string) => {
-    setEmployees(employees.map(emp => (emp.key === key ? { ...emp, [field]: value } : emp)));
-  };
+  // ★ 2. useCallback を使って関数を定義する ★
+  const handleRequesterNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setRequesterName(e.target.value);
+  }, []);
+
+  const handleRequesterEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setRequesterEmail(e.target.value);
+  }, []);
+
+  const handleEmployeeChange = useCallback((key: number, field: 'name' | 'id', value: string) => {
+    setEmployees(prevEmployees =>
+      prevEmployees.map(emp => (emp.key === key ? { ...emp, [field]: value } : emp))
+    );
+  }, []);
 
   const validate = () => {
     const newErrors: Errors = {};
@@ -123,8 +132,6 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
     setTimeout(() => setShowSuccessAlert(false), 5000);
   };
 
-  // FormFieldコンポーネントは外に移動したので、ここからは削除！
-
   return (
     <div className="max-w-3xl mx-auto">
       {showSuccessAlert && (
@@ -138,8 +145,9 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
           <fieldset className="mb-6">
             <legend className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">あなたの情報</legend>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField label="依頼者氏名" id="requesterName" value={requesterName} onChange={(e) => setRequesterName(e.target.value)} error={errors.requesterName} />
-              <FormField label="依頼者メールアドレス" id="requesterEmail" value={requesterEmail} onChange={(e) => setRequesterEmail(e.target.value)} type="email" error={errors.requesterEmail} />
+              {/* ★ 3. 新しく作った関数を onChange に渡す ★ */}
+              <FormField label="依頼者氏名" id="requesterName" value={requesterName} onChange={handleRequesterNameChange} error={errors.requesterName} />
+              <FormField label="依頼者メールアドレス" id="requesterEmail" value={requesterEmail} onChange={handleRequesterEmailChange} type="email" error={errors.requesterEmail} />
             </div>
           </fieldset>
 
@@ -149,6 +157,7 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks }) => {
               {employees.map((employee, index) => (
                 <div key={employee.key} className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
                   <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* ★ 3. 新しく作った関数を onChange に渡す ★ */}
                     <FormField label="対象社員氏名" id={`employeeName-${employee.key}`} value={employee.name} onChange={(e) => handleEmployeeChange(employee.key, 'name', e.target.value)} error={errors.employees?.[index]?.name} />
                     <FormField label="社員番号" id={`employeeId-${employee.key}`} value={employee.id} onChange={(e) => handleEmployeeChange(employee.key, 'id', e.target.value)} error={errors.employees?.[index]?.id} />
                   </div>
