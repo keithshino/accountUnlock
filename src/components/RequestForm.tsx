@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 
 interface UserProfile {
-  name: string;
+  //name: string;
+  displayName: string;
   company: string;
   email: string;
   phone?: string;
@@ -67,7 +68,7 @@ const TrashIcon = () => (
 const FormField: React.FC<{
   label: string;
   id: string;
-  value: string;
+  value: string; // ← このままでOK
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   type?: string;
   error?: string;
@@ -83,9 +84,9 @@ const FormField: React.FC<{
     <input
       type={type}
       id={id}
-      value={value}
-      onChange={onChange}
-      disabled={disabled}
+      value={value} // ★★★ ここは常に value を渡すようにする！ ★★★
+      onChange={onChange} // ★★★ ここも常に onChange を渡すようにする！ ★★★
+      disabled={disabled} // disabled はそのままにして、入力不可にする
       className={`w-full p-3 border rounded-md shadow-sm transition-colors ${error
         ? 'border-red-500 bg-red-50'
         : 'border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50'
@@ -107,9 +108,15 @@ const RequestForm: React.FC<RequestFormProps> = ({ onAddTasks, userProfile }) =>
   const [errors, setErrors] = useState<Errors>({});
 
   useEffect(() => {
+    console.log("RequestForm: userProfile が更新されました:", userProfile); // ★追加その４
     if (userProfile) {
-      setRequesterName(userProfile.name);
+      setRequesterName(userProfile.displayName);
       setRequesterEmail(userProfile.email);
+      console.log("RequestForm: requesterName, requesterEmail がセットされました:", userProfile.displayName, userProfile.email); // ★追加その５
+    } else {
+      // userProfile が null の場合、フォームをリセットする
+      setRequesterName('');
+      setRequesterEmail('');
     }
   }, [userProfile]);
 

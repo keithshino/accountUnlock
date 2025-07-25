@@ -3,7 +3,8 @@ import { User } from 'firebase/auth';
 
 // ユーザー情報の型を定義
 interface UserProfile {
-    name: string;
+    //name: string;
+    displayName: string;
     company: string;
     email: string;
     phone?: string;
@@ -19,9 +20,9 @@ interface ProfilePageProps {
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ user, userProfile, onUpdateProfile, onBack }) => {
     const [profileData, setProfileData] = useState({
-        name: '',
-        company: '',
-        phone: '',
+        name: userProfile?.displayName || '', // ★★★ ここを修正！ displayName を使う！ ★★★
+        company: userProfile?.company || '',
+        phone: userProfile?.phone || '',
     });
     const [isLoading, setIsLoading] = useState(false);
 
@@ -29,9 +30,16 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, userProfile, onUpdatePr
     useEffect(() => {
         if (userProfile) {
             setProfileData({
-                name: userProfile.name,
+                name: userProfile.displayName, // ★★★ ここも修正！ displayName を使う！ ★★★
                 company: userProfile.company,
                 phone: userProfile.phone || '',
+            });
+        } else {
+            // userProfile が null になった場合もフォームをリセット
+            setProfileData({
+                name: '',
+                company: '',
+                phone: '',
             });
         }
     }, [userProfile]);

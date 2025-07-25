@@ -1,3 +1,5 @@
+import { Timestamp } from 'firebase/firestore';
+
 export enum TaskStatus {
   NEW = '新規受付',
   IN_PROGRESS = '対応中',
@@ -11,8 +13,8 @@ export enum ReportStatus {
 }
 
 export interface Task {
-  id: number;
-  createdAt: string;
+  id: string;
+  createdAt: Timestamp;
   requesterName: string;
   requesterEmail: string;
   employeeName: string;

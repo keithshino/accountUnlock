@@ -5,7 +5,7 @@ import Modal from './Modal';
 
 interface AdminDashboardProps {
     tasks: Task[];
-    setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+    onUpdateTask: (updatedTask: Task) => Promise<void>;
 }
 
 const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -91,11 +91,11 @@ const EditTaskModal: React.FC<{
 };
 
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ tasks, setTasks }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ tasks, onUpdateTask }) => {
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
     const handleUpdateTask = (updatedTask: Task) => {
-        setTasks(prevTasks => prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t));
+        onUpdateTask(updatedTask);
         setSelectedTask(null);
     };
 
