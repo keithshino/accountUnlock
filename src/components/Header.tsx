@@ -1,9 +1,7 @@
-import React from 'react';
-//import { View } from '../App';
+import React, { useState, useEffect, useRef } from 'react';
 import { User } from 'firebase/auth';
 import { Link, useLocation } from 'react-router-dom';
 
-// ★★★ UserProfile の型定義を App.tsx と揃えるばい！ ★★★
 interface UserProfile {
   displayName: string;
   company: string;
@@ -14,14 +12,29 @@ interface UserProfile {
 
 interface HeaderProps {
   user: User;
-  onLogout: () => void; // Promise<void> になっていたら調整してね。App.tsxのhandleLogoutに合わせる
-  userProfile: UserProfile | null; // ★★★ これを追加するばい！ ★★★
+  onLogout: () => void;
+  userProfile: UserProfile | null;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, onLogout, userProfile }) => { // userProfile を受け取る
-  const location = useLocation(); // ★★★ 現在のパスを取得するフック ★★★
+const Header: React.FC<HeaderProps> = ({ user, onLogout, userProfile }) => {
+  const location = useLocation();
+  const [isDropdownOpen, setDropdownOpen] = useState(false); // ★ ドロップダウンが開いとるかを記憶
+  const dropdownRef = useRef<HTMLDivElement>(null); // ★ ドロップダウンメニューの要素を特定するため
 
-  // アクティブなリンクのスタイルを決定するヘルパー関数
+  // ★ メニューの外側をクリックしたら閉じる機能
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+
   const getLinkClassName = (path: string) => `
     py-2 px-3 rounded-md text-sm font-medium transition-colors
     ${location.pathname === path ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}
@@ -31,8 +44,6 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, userProfile }) => { // 
     <header className="bg-white shadow-md">
       <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          {/* ★★★ タイトル部分を Link に変更するばい！ ★★★ */}
-          {/* ログインユーザーのロールに応じて、クリックしたら飛ぶページを変える */}
           <Link
             to={userProfile?.role === 'support' ? '/admin' : '/client'}
             className="text-2xl font-bold text-gray-900 tracking-tight"
@@ -40,54 +51,53 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, userProfile }) => { // 
             アカウントロック解除管理ツール
           </Link>
           <nav className="hidden md:flex space-x-4">
-            {/* ★★★ ナビゲーションボタンを Link に変更し、ロールで表示を切り替えるばい！ ★★★ */}
-            <ul> {/* ul で囲むと Semantic HTML になるけんおすすめたい */}
-              {/* クライアント向けリンク */}
+            <ul>
               {userProfile && userProfile.role === 'client' && (
                 <li>
-                  <Link
-                    to="/client"
-                    className={getLinkClassName('/client')}
-                  >
-                    依頼フォーム
-                  </Link>
+                  <Link to="/client" className={getLinkClassName('/client')}>依頼フォーム</Link>
                 </li>
               )}
-              {/* サポート向けリンク */}
               {userProfile && userProfile.role === 'support' && (
                 <li>
-                  <Link
-                    to="/admin"
-                    className={getLinkClassName('/admin')}
-                  >
-                    管理ダッシュボード
-                  </Link>
+                  <Link to="/admin" className={getLinkClassName('/admin')}>管理ダッシュボード</Link>
                 </li>
               )}
-              {/* プロフィールリンク（全員共通） */}
-              <li>
-                <Link
-                  to="/profile"
-                  className={getLinkClassName('/profile')}
-                >
-                  プロフィール
-                </Link>
-              </li>
             </ul>
           </nav>
         </div>
 
-        <div className="flex items-center space-x-4">
-          <span className="text-gray-600 text-sm hidden sm:block">
-            {user.email}
-          </span>
-          {/* ログアウトボタンはそのまま onLogout を使う */}
+        {/* ★★★ ここからがドロップダウンメニューの改造部分！ ★★★ */}
+        <div className="relative" ref={dropdownRef}>
           <button
-            onClick={onLogout}
-            className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+            onClick={() => setDropdownOpen(!isDropdownOpen)}
+            className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100"
           >
-            ログアウト
+            <span className="text-gray-600 text-sm hidden sm:block">
+              {user.email}
+            </span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
           </button>
+
+          {/* isDropdownOpenがtrueの時だけ、メニューを表示する */}
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+              <Link
+                to="/profile"
+                onClick={() => setDropdownOpen(false)} // リンクをクリックしたらメニューを閉じる
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                プロフィール
+              </Link>
+              <button
+                onClick={onLogout}
+                className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+              >
+                ログアウト
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

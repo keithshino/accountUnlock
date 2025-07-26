@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 export interface SignUpData {
     email: string;
     pass: string;
-    name: string;
+    displayName: string;
     company: string;
     phone?: string;
 }
@@ -23,7 +23,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onEmailLogin, onGoogleLogin, onEm
     const [formData, setFormData] = useState({
         email: '',
         password: '',
-        name: '',
+        displayName: '',
         company: '',
         phone: '',
     });
@@ -41,7 +41,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onEmailLogin, onGoogleLogin, onEm
             onEmailSignUp({
                 email: formData.email,
                 pass: formData.password,
-                name: formData.name,
+                displayName: formData.displayName,
                 company: formData.company,
                 phone: formData.phone,
             });
@@ -51,7 +51,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onEmailLogin, onGoogleLogin, onEm
     const toggleAuthMode = () => {
         setAuthMode(prevMode => prevMode === 'login' ? 'signup' : 'login');
         // モード切替時にフォームをリセット
-        setFormData({ email: '', password: '', name: '', company: '', phone: '' });
+        setFormData({ email: '', password: '', displayName: '', company: '', phone: '' });
     };
 
     return (

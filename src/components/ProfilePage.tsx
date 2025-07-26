@@ -1,45 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { User } from 'firebase/auth';
 
-// ユーザー情報の型を定義
 interface UserProfile {
-    //name: string;
     displayName: string;
     company: string;
     email: string;
     phone?: string;
 }
 
-// このコンポーネントが受け取るデータの型を定義
 interface ProfilePageProps {
     user: User;
     userProfile: UserProfile | null;
     onUpdateProfile: (updatedProfile: Partial<UserProfile>) => Promise<void>;
-    onBack: () => void; // 戻るボタン用の関数
+    onBack: () => void;
 }
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ user, userProfile, onUpdateProfile, onBack }) => {
     const [profileData, setProfileData] = useState({
-        name: userProfile?.displayName || '', // ★★★ ここを修正！ displayName を使う！ ★★★
-        company: userProfile?.company || '',
-        phone: userProfile?.phone || '',
+        displayName: '',
+        company: '',
+        phone: '',
     });
     const [isLoading, setIsLoading] = useState(false);
 
-    // 最初にユーザー情報が読み込まれたら、フォームにセットする
     useEffect(() => {
         if (userProfile) {
             setProfileData({
-                name: userProfile.displayName, // ★★★ ここも修正！ displayName を使う！ ★★★
+                displayName: userProfile.displayName,
                 company: userProfile.company,
                 phone: userProfile.phone || '',
-            });
-        } else {
-            // userProfile が null になった場合もフォームをリセット
-            setProfileData({
-                name: '',
-                company: '',
-                phone: '',
             });
         }
     }, [userProfile]);
@@ -72,11 +61,11 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, userProfile, onUpdatePr
                         <p className="mt-1 p-3 bg-gray-100 rounded-md text-gray-500">{user.email}</p>
                     </div>
                     <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">氏名</label>
+                        <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">氏名</label>
                         <input
                             type="text"
-                            id="name"
-                            value={profileData.name}
+                            id="displayName"
+                            value={profileData.displayName}
                             onChange={handleInputChange}
                             className="mt-1 w-full p-3 border rounded-md"
                             required
@@ -98,7 +87,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, userProfile, onUpdatePr
                         <input
                             type="tel"
                             id="phone"
-                            value={profileData.phone}
+                            value={profileData.phone || ''}
                             onChange={handleInputChange}
                             className="mt-1 w-full p-3 border rounded-md"
                         />
