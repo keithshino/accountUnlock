@@ -34,7 +34,7 @@ const EditTaskModal: React.FC<{
     const [reportStatus, setReportStatus] = useState(task.reportStatus);
     const [log, setLog] = useState(task.log);
 
-    // ★★★ 報告状況が編集可能かどうかを判定するロジックを追加するばい！ ★★★
+    // 報告状況が編集可能かどうかを判定するロジック (変更なし)
     const isReportStatusEditable = (currentStatus: TaskStatus) => {
         return (
             currentStatus === TaskStatus.RESOLVED || // ロック解除済
@@ -42,32 +42,41 @@ const EditTaskModal: React.FC<{
         );
     };
 
-    // コンポーネントがマウントされた時、または task が変更された時にStateを初期化
+    // ★★★ ステータスが編集可能かどうかを判定するロジックを追加するばい！ ★★★
+    const isStatusEditable = (currentReportStatus: ReportStatus) => {
+        return currentReportStatus !== ReportStatus.REPORTED; // 「報告済」でなければ編集可能
+    };
+
     useEffect(() => {
         setStatus(task.status);
         setReportStatus(task.reportStatus);
         setLog(task.log);
 
-        // ★★★ ここで重要たい！ ★★★
-        // もし報告状況が編集不可のステータスなのに、現在「報告済」になっていたら、
+        // 報告状況が編集不可のステータスなのに、現在「報告済」になっていたら、
         // 自動的に「未報告」に戻してあげるばい。
-        // これで、過去に「報告済」だったものが、ステータス変更で編集不可になった時に
-        // 入力値の矛盾を防げるけん！
         if (!isReportStatusEditable(task.status) && task.reportStatus === ReportStatus.REPORTED) {
             setReportStatus(ReportStatus.UNREPORTED);
         }
-    }, [task]); // task が変わるたびに useEffect を再実行
+    }, [task]);
 
-    // ステータスが変更された時のハンドラーを修正
     const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newStatus = e.target.value as TaskStatus;
         setStatus(newStatus);
 
-        // ★★★ ステータスが変更された時に報告状況を自動で「未報告」に戻すロジックを追加するばい！ ★★★
-        // 新しいステータスが報告状況を編集できない状態になったら、強制的に「未報告」にする
+        // ステータスが変更された時に報告状況を自動で「未報告」に戻すロジックを追加するばい！
         if (!isReportStatusEditable(newStatus)) {
             setReportStatus(ReportStatus.UNREPORTED);
         }
+    };
+
+    // ★★★ 報告状況が変更された時のハンドラーを修正するばい！ ★★★
+    const handleReportStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newReportStatus = e.target.value as ReportStatus;
+        setReportStatus(newReportStatus);
+
+        // もし報告状況が「報告済」になったら、現在のステータスが「ロック解除済」か「対応不可」
+        // でなければ、自動的に「ロック解除済」にするなどの制御も考えられるが、
+        // 今回は「報告済」になったらステータスは変更不可になるので、そこまでは不要たい。
     };
 
 
@@ -103,7 +112,9 @@ const EditTaskModal: React.FC<{
                             id="status"
                             value={status}
                             onChange={handleStatusChange}
-                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                            // ★★★ ここで重要たい！ disabled プロパティを設定するばい！ ★★★
+                            disabled={!isStatusEditable(reportStatus)} // 報告状況が「報告済」なら disabled
+                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md disabled:bg-gray-100 disabled:text-gray-500" // disabled 時のスタイルを追加
                         >
                             {TASK_STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
@@ -113,9 +124,9 @@ const EditTaskModal: React.FC<{
                         <select
                             id="reportStatus"
                             value={reportStatus}
-                            onChange={e => setReportStatus(e.target.value as ReportStatus)}
+                            onChange={handleReportStatusChange}
                             disabled={!isReportStatusEditable(status)}
-                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md disabled:bg-gray-100 disabled:text-gray-500" // disabled 時のスタイルを追加
+                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md disabled:bg-gray-100 disabled:text-gray-500"
                         >
                             {REPORT_STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
