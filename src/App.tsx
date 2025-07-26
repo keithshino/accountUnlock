@@ -7,6 +7,8 @@ import AdminDashboard from './components/AdminDashboard';
 import { SignUpData, default as LoginPage } from './components/LoginPage';
 import ProfilePage from './components/ProfilePage';
 
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+
 import { auth, db } from './firebase';
 import {
   User,
@@ -25,15 +27,18 @@ interface UserProfile {
   company: string;
   email: string;
   phone?: string;
+  role: 'client' | 'support';
 }
 
-export type View = 'requester' | 'admin' | 'profile';
+//export type View = 'requester' | 'admin' | 'profile';
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [view, setView] = useState<View>('requester');
+  //const [view, setView] = useState<View>('requester');
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  const navigate = useNavigate();
 
   const fetchTasks = useCallback(async () => {
     const q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
@@ -51,6 +56,7 @@ function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+
       if (currentUser) {
         const userDocRef = doc(db, "users", currentUser.uid);
         const userDocSnap = await getDoc(userDocRef);
@@ -58,6 +64,14 @@ function App() {
           const profileData = userDocSnap.data() as UserProfile;
           setUserProfile(profileData);
           console.log("App.tsx で userProfile がセットされました:", profileData);
+
+          // ★★★ ロールに応じた画面遷移は、userProfile が完全にセットされてから行う ★★★
+          // そして、既に正しいパスにいる場合は遷移しないようにチェックを加える
+          const targetPath = profileData.role === 'support' ? '/admin' : '/client';
+          if (location.pathname !== targetPath) {
+            navigate(targetPath);
+          }
+
         } else {
           console.log("App.tsx: userDocSnap.exists() が false でした。"); // ★追加その２
           // 新規登録直後などでuserProfileがまだない場合、空のUserProfileをセットするなどの考慮が必要かも
@@ -67,17 +81,26 @@ function App() {
             company: '',
             email: currentUser.email || '',
             phone: '',
+            role: 'client',
           });
+          // 新規ユーザーもデフォルトで依頼フォームへ
+          if (location.pathname !== '/client') {
+            navigate('/client');
+          }
         }
         fetchTasks();
       } else {
         setUserProfile(null);
         setTasks([]);
+        // ログインページ以外にいる場合はログインページへリダイレクト
+        if (location.pathname !== '/') {
+          navigate('/');
+        }
         console.log("App.tsx: ユーザーがログアウトしました。"); // ★追加その３
       }
     });
     return () => unsubscribe();
-  }, [fetchTasks]);
+  }, [fetchTasks, navigate, location.pathname]);
 
   const addNewTasks = async (data: {
     requesterName: string;
@@ -231,7 +254,7 @@ function App() {
           role: 'support',
         }, { merge: true });
 
-        console.log("ユーザー情報とロールがFirestoreに保存されました:", user.uid);
+        console.log("サポート窓口ユーザー情報とロールがFirestoreに保存されました:", user.uid);
         alert("Googleログインに成功しました！");
       } else {
         console.error("Googleログインは成功しましたが、ユーザー情報が取得できませんでした。");
@@ -262,6 +285,7 @@ function App() {
     try {
       await signOut(auth);
       alert("ログアウトしました！"); // ログアウト成功時のメッセージ
+      navigate('/'); // ログアウトしたらログインページへ
     } catch (error) {
       console.error("ログアウトエラー:", error);
       alert("ログアウトに失敗しました。");
@@ -288,31 +312,97 @@ function App() {
     }
   };
 
-  const MainContent = () => {
-    switch (view) {
-      case 'requester':
-        return <RequestForm onAddTasks={addNewTasks} userProfile={userProfile} />;
-      case 'admin':
-        return <AdminDashboard tasks={tasks} onUpdateTask={handleUpdateTask} />;
-      case 'profile':
-        if (user && userProfile) {
-          return <ProfilePage user={user} userProfile={userProfile} onUpdateProfile={handleUpdateProfile} onBack={() => setView('requester')} />;
-        }
-        return null;
-      default:
-        return <RequestForm onAddTasks={addNewTasks} userProfile={userProfile} />;
-    }
-  };
+  // const MainContent = () => {
+  //   switch (view) {
+  //     case 'requester':
+  //       return <RequestForm onAddTasks={addNewTasks} userProfile={userProfile} />;
+  //     case 'admin':
+  //       return <AdminDashboard tasks={tasks} onUpdateTask={handleUpdateTask} />;
+  //     case 'profile':
+  //       if (user && userProfile) {
+  //         return <ProfilePage user={user} userProfile={userProfile} onUpdateProfile={handleUpdateProfile} onBack={() => setView('requester')} />;
+  //       }
+  //       return null;
+  //     default:
+  //       return <RequestForm onAddTasks={addNewTasks} userProfile={userProfile} />;
+  //   }
+  // };
 
   if (!user) {
-    return <LoginPage onEmailLogin={handleEmailLogin} onGoogleLogin={handleGoogleLogin} onEmailSignUp={handleEmailSignUp} />;
+    return (
+      // ★★★ <Router> は index.tsx で囲むようになったけん、ここは Routes だけにするばい！ ★★★
+      <Routes>
+        <Route path="/" element={
+          <LoginPage
+            onEmailLogin={handleEmailLogin}
+            onGoogleLogin={handleGoogleLogin}
+            onEmailSignUp={handleEmailSignUp}
+          />}
+        />
+        {/* 未ログイン時は /client や /admin に直接アクセスしてもログインページにリダイレクト */}
+        <Route path="/client" element={<Navigate to="/" replace />} />
+        <Route path="/admin" element={<Navigate to="/" replace />} />
+        <Route path="/profile" element={<Navigate to="/" replace />} />
+        {/* 存在しないパスはホームまたはログインページへ */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
   }
 
+  // ログイン済みの場合は、ヘッダーとルーティングされたメインコンテンツを表示
   return (
+    // ★★★ <Router> は index.tsx で囲むようになったけん、ここは Div で囲む！ ★★★
     <div className="bg-gray-100 min-h-screen font-sans text-gray-800">
-      <Header activeView={view} setActiveView={setView} user={user} onLogout={handleLogout} />
+      {/* Header に userProfile を渡すのを忘れんでね！ */}
+      <Header user={user} onLogout={handleLogout} userProfile={userProfile} />
       <main className="p-4 sm:p-6 lg:p-8">
-        <MainContent />
+        <Routes>
+          {/* クライアント用のルート */}
+          <Route path="/client" element={
+            userProfile && userProfile.role === 'client' ? (
+              <RequestForm onAddTasks={addNewTasks} userProfile={userProfile} />
+            ) : (
+              // ロールがclientじゃない場合は、supportなら/admin、そうでなければ/ （ログインページ）に飛ばす
+              userProfile?.role === 'support' ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />
+            )
+          } />
+
+          {/* 管理側用のルート */}
+          <Route path="/admin" element={
+            userProfile && userProfile.role === 'support' ? (
+              <AdminDashboard tasks={tasks} onUpdateTask={handleUpdateTask} />
+            ) : (
+              // ロールがsupportじゃない場合は、clientなら/client、そうでなければ/ （ログインページ）に飛ばす
+              userProfile?.role === 'client' ? <Navigate to="/client" replace /> : <Navigate to="/" replace />
+            )
+          } />
+
+          {/* プロフィールページはロールに関わらずアクセス可能 */}
+          <Route path="/profile" element={
+            user && userProfile ? (
+              // onBack も navigate を使うように変更する必要があるばい
+              <ProfilePage user={user} userProfile={userProfile} onUpdateProfile={handleUpdateProfile} onBack={() => navigate(userProfile.role === 'support' ? '/admin' : '/client')} />
+            ) : (
+              <Navigate to="/" replace /> // プロフィール情報がない場合はログインページへ
+            )
+          } />
+
+          {/* ロールに応じたデフォルトルート（ログイン後にどのページに遷移するか） */}
+          <Route path="/" element={
+            userProfile ? (
+              userProfile.role === 'support' ? (
+                <Navigate to="/admin" replace />
+              ) : (
+                <Navigate to="/client" replace />
+              )
+            ) : (
+              // userProfileがまだロード中の場合は何も表示しないか、ローディングスピナーを表示
+              <div>Loading profile...</div>
+            )
+          } />
+          {/* その他、存在しないパスはホームまたはログインページへ */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
     </div>
   );

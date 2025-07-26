@@ -70,7 +70,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onEmailLogin, onGoogleLogin, onEm
                         className={`flex-1 py-4 text-center font-semibold rounded-tr-xl transition-colors ${userType === 'support' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
                             }`}
                     >
-                        サポート窓口様
+                        サポート窓口用
                     </button>
                 </div>
 
