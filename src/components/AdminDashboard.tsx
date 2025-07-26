@@ -34,11 +34,42 @@ const EditTaskModal: React.FC<{
     const [reportStatus, setReportStatus] = useState(task.reportStatus);
     const [log, setLog] = useState(task.log);
 
+    // ★★★ 報告状況が編集可能かどうかを判定するロジックを追加するばい！ ★★★
+    const isReportStatusEditable = (currentStatus: TaskStatus) => {
+        return (
+            currentStatus === TaskStatus.RESOLVED || // ロック解除済
+            currentStatus === TaskStatus.CANNOT_RESOLVE // 対応不可
+        );
+    };
+
+    // コンポーネントがマウントされた時、または task が変更された時にStateを初期化
     useEffect(() => {
         setStatus(task.status);
         setReportStatus(task.reportStatus);
         setLog(task.log);
-    }, [task]);
+
+        // ★★★ ここで重要たい！ ★★★
+        // もし報告状況が編集不可のステータスなのに、現在「報告済」になっていたら、
+        // 自動的に「未報告」に戻してあげるばい。
+        // これで、過去に「報告済」だったものが、ステータス変更で編集不可になった時に
+        // 入力値の矛盾を防げるけん！
+        if (!isReportStatusEditable(task.status) && task.reportStatus === ReportStatus.REPORTED) {
+            setReportStatus(ReportStatus.UNREPORTED);
+        }
+    }, [task]); // task が変わるたびに useEffect を再実行
+
+    // ステータスが変更された時のハンドラーを修正
+    const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newStatus = e.target.value as TaskStatus;
+        setStatus(newStatus);
+
+        // ★★★ ステータスが変更された時に報告状況を自動で「未報告」に戻すロジックを追加するばい！ ★★★
+        // 新しいステータスが報告状況を編集できない状態になったら、強制的に「未報告」にする
+        if (!isReportStatusEditable(newStatus)) {
+            setReportStatus(ReportStatus.UNREPORTED);
+        }
+    };
+
 
     const handleUpdate = () => {
         onUpdate({ ...task, status, reportStatus, log });
@@ -68,13 +99,24 @@ const EditTaskModal: React.FC<{
                 <div className="space-y-2">
                     <div>
                         <label htmlFor="status" className="block font-medium text-gray-700">Status</label>
-                        <select id="status" value={status} onChange={e => setStatus(e.target.value as TaskStatus)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                        <select
+                            id="status"
+                            value={status}
+                            onChange={handleStatusChange}
+                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                        >
                             {TASK_STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
                     </div>
                     <div>
                         <label htmlFor="reportStatus" className="block font-medium text-gray-700">報告状況</label>
-                        <select id="reportStatus" value={reportStatus} onChange={e => setReportStatus(e.target.value as ReportStatus)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                        <select
+                            id="reportStatus"
+                            value={reportStatus}
+                            onChange={e => setReportStatus(e.target.value as ReportStatus)}
+                            disabled={!isReportStatusEditable(status)}
+                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md disabled:bg-gray-100 disabled:text-gray-500" // disabled 時のスタイルを追加
+                        >
                             {REPORT_STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
                     </div>
