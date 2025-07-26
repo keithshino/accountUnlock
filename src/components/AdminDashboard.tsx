@@ -15,7 +15,6 @@ const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 
-// ★★★ 日付を読みやすい形式に変換する関数 ★★★
 const formatDate = (timestamp: any) => {
     if (timestamp && typeof timestamp.toDate === 'function') {
         return timestamp.toDate().toLocaleString('ja-JP', {
@@ -23,7 +22,7 @@ const formatDate = (timestamp: any) => {
             hour: '2-digit', minute: '2-digit',
         });
     }
-    return String(timestamp); // Fallback for other data types
+    return String(timestamp);
 };
 
 const EditTaskModal: React.FC<{
@@ -62,7 +61,6 @@ const EditTaskModal: React.FC<{
             }
         >
             <div className="space-y-4 text-sm">
-                {/* ★★★ 修正ポイント１ ★★★ */}
                 <div><strong>受付日時:</strong> {formatDate(task.createdAt)}</div>
                 <div><strong>依頼者:</strong> {task.requesterName} ({task.requesterEmail})</div>
                 <div><strong>対象社員:</strong> {task.employeeName} (社員番号: {task.employeeId})</div>
@@ -94,6 +92,33 @@ const EditTaskModal: React.FC<{
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ tasks, onUpdateTask }) => {
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
+    type FilterOption = TaskStatus | 'all';
+    const [filterStatus, setFilterStatus] = useState<FilterOption>('all');
+
+    // ★★★ 報告状況フィルタリング用のStateを追加するばい！ ★★★
+    type ReportFilterOption = ReportStatus | 'all';
+    // デフォルトは「未報告」のみを抽出したいので 'unreported' を初期値にする
+    const [filterReportStatus, setFilterReportStatus] = useState<ReportFilterOption>(ReportStatus.UNREPORTED);
+
+    const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
+
+    // tasks, filterStatus, filterReportStatus が変わったら、フィルタリングを適用するばい！
+    useEffect(() => {
+        let currentFilteredTasks = tasks;
+
+        // ステータスフィルタリングを適用
+        if (filterStatus !== 'all') {
+            currentFilteredTasks = currentFilteredTasks.filter(task => task.status === filterStatus);
+        }
+
+        // ★★★ 報告状況フィルタリングを適用するばい！ ★★★
+        if (filterReportStatus !== 'all') {
+            currentFilteredTasks = currentFilteredTasks.filter(task => task.reportStatus === filterReportStatus);
+        }
+
+        setFilteredTasks(currentFilteredTasks);
+    }, [tasks, filterStatus, filterReportStatus]); // 依存配列に filterReportStatus も含める
+
     const handleUpdateTask = (updatedTask: Task) => {
         onUpdateTask(updatedTask);
         setSelectedTask(null);
@@ -119,15 +144,75 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ tasks, onUpdateTask }) 
         return `${baseClasses} ${colorMap[status]}`;
     };
 
-    const sortedTasks = [...tasks].sort((a, b) => {
+    const sortedTasks = [...filteredTasks].sort((a, b) => {
         const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
         const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
         return dateB - dateA;
     });
 
+    // ★★★ フィルタリングボタンのスタイルを決定するヘルパー関数 ★★★
+    const getFilterButtonClasses = (currentFilter: ReportFilterOption, buttonValue: ReportFilterOption) => {
+        const base = "py-2 px-4 rounded-full text-sm font-medium transition-colors";
+        if (currentFilter === buttonValue) {
+            return `${base} bg-blue-600 text-white`; // 選択中のスタイル
+        } else {
+            return `${base} bg-gray-200 text-gray-700 hover:bg-gray-300`; // 通常のスタイル
+        }
+    };
+
     return (
         <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6">依頼一覧</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 mb-4">
+                {/* ステータスフィルタリングUI (そのまま) */}
+                <div className="flex items-center space-x-3">
+                    <label htmlFor="statusFilter" className="block text-sm font-medium text-gray-700">
+                        ステータスで絞り込む:
+                    </label>
+                    <select
+                        id="statusFilter"
+                        name="statusFilter"
+                        className="mt-1 block w-auto pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value as FilterOption)}
+                    >
+                        <option value="all">全てのステータス</option>
+                        {TASK_STATUS_OPTIONS.map(statusOption => (
+                            <option key={statusOption} value={statusOption}>
+                                {statusOption}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* ★★★ 報告状況フィルタリングUIを追加するばい！ ★★★ */}
+                <div className="flex items-center space-x-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                        報告状況:
+                    </label>
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={() => setFilterReportStatus(ReportStatus.UNREPORTED)}
+                            className={getFilterButtonClasses(filterReportStatus, ReportStatus.UNREPORTED)}
+                        >
+                            未報告
+                        </button>
+                        <button
+                            onClick={() => setFilterReportStatus(ReportStatus.REPORTED)}
+                            className={getFilterButtonClasses(filterReportStatus, ReportStatus.REPORTED)}
+                        >
+                            報告済
+                        </button>
+                        <button
+                            onClick={() => setFilterReportStatus('all')}
+                            className={getFilterButtonClasses(filterReportStatus, 'all')}
+                        >
+                            全て
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
@@ -138,31 +223,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ tasks, onUpdateTask }) 
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {sortedTasks.map((task) => (
-                            <tr key={task.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{task.id}</td>
-                                {/* ★★★ 修正ポイント２ ★★★ */}
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(task.createdAt)}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.requesterName}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.employeeId}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.employeeName}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm"><span className={getStatusBadge(task.status)}>{task.status}</span></td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm"><span className={getReportStatusBadge(task.reportStatus)}>{task.reportStatus}</span></td>
-                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                    <button onClick={() => setSelectedTask(task)} className="text-blue-600 hover:text-blue-900 flex items-center gap-1 p-2 rounded-md hover:bg-blue-100 transition-colors">
-                                        <SearchIcon className="inline" />
-                                        <span className="hidden sm:inline">詳細</span>
-                                    </button>
+                        {sortedTasks.length === 0 ? (
+                            <tr>
+                                <td colSpan={8} className="px-6 py-4 whitespace-nowrap text-center text-gray-500">
+                                    表示する依頼はありません。
                                 </td>
                             </tr>
-                        ))}
+                        ) : (
+                            sortedTasks.map((task) => (
+                                <tr key={task.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{task.id}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(task.createdAt)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.requesterName}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.employeeId}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.employeeName}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm"><span className={getStatusBadge(task.status)}>{task.status}</span></td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm"><span className={getReportStatusBadge(task.reportStatus)}>{task.reportStatus}</span></td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                        <button onClick={() => setSelectedTask(task)} className="text-blue-600 hover:text-blue-900 flex items-center gap-1 p-2 rounded-md hover:bg-blue-100 transition-colors">
+                                            <SearchIcon className="inline" />
+                                            <span className="hidden sm:inline">詳細</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
-                {sortedTasks.length === 0 && (
-                    <div className="text-center py-10 text-gray-500">
-                        現在、アクティブな依頼はありません。
-                    </div>
-                )}
             </div>
 
             {selectedTask && (
