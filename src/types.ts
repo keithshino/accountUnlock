@@ -22,4 +22,6 @@ export interface Task {
   status: TaskStatus;
   reportStatus: ReportStatus;
   log: string;
+  completedBy?: string; // ★ この行を追加！
+  completedAt?: any;    // ★ この行を追加！
 }

@@ -170,17 +170,57 @@ function App() {
   };
 
   const handleUpdateTask = async (updatedTask: Task) => {
-    if (!updatedTask.id) return;
+    if (!updatedTask.id || !user?.email) return; // ★ user.emailがない場合も弾くように
+
+    // ★ 齟齬を修正！更新前のタスク情報を取得する
+    const currentTask = tasks.find(task => task.id === updatedTask.id);
+    if (!currentTask) return;
+
     try {
       const taskDocRef = doc(db, "tasks", updatedTask.id);
-      await updateDoc(taskDocRef, {
+
+      const now = new Date();
+      const timestamp = now.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+      let logEntry = `[${timestamp} by ${user.email}]`;
+      const changes = [];
+
+      if (updatedTask.status !== currentTask.status) {
+        changes.push(`Statusを「${currentTask.status}」から「${updatedTask.status}」に変更`);
+      }
+      if (updatedTask.reportStatus !== currentTask.reportStatus) {
+        changes.push(`報告状況を「${currentTask.reportStatus}」から「${updatedTask.reportStatus}」に変更`);
+      }
+      if (updatedTask.log !== currentTask.log) {
+        changes.push('備考を更新');
+      }
+
+      if (changes.length > 0) {
+        logEntry += ' ' + changes.join('、') + 'しました。';
+      } else {
+        logEntry = '';
+      }
+
+      const newLog = logEntry ? `${logEntry}\n${updatedTask.log}` : updatedTask.log;
+
+      const dataToUpdate: Partial<Task> = {
         status: updatedTask.status,
         reportStatus: updatedTask.reportStatus,
-        log: updatedTask.log,
-      });
+        log: newLog,
+      };
+
+      if (updatedTask.reportStatus === '報告済' && currentTask.reportStatus !== '報告済') {
+        dataToUpdate.completedBy = user.email;
+        dataToUpdate.completedAt = Timestamp.now();
+      }
+
+      await updateDoc(taskDocRef, dataToUpdate);
+
+      const finalUpdatedTask = { ...updatedTask, log: newLog, ...dataToUpdate };
       setTasks(prevTasks => prevTasks.map(task =>
-        task.id === updatedTask.id ? updatedTask : task
+        task.id === finalUpdatedTask.id ? finalUpdatedTask : task
       ));
+
       alert('タスクを更新しました！');
     } catch (error) {
       console.error("タスクの更新に失敗しました:", error);
