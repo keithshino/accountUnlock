@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './index.css';
 import { Task, TaskStatus, ReportStatus } from './types';
 import Header from './components/Header';
-import RequestForm from './components/RequestForm';
+// import RequestForm from './components/RequestForm';
 import AdminDashboard from './components/AdminDashboard';
+import ClientDashboard from './components/ClientDashboard';
 import { SignUpData, default as LoginPage } from './components/LoginPage';
 import ProfilePage from './components/ProfilePage';
 
@@ -20,7 +21,7 @@ import {
   GoogleAuthProvider,
   signOut
 } from 'firebase/auth';
-import { runTransaction, doc, setDoc, getDoc, updateDoc, collection, getDocs, Timestamp, query, orderBy } from 'firebase/firestore';
+import { runTransaction, doc, setDoc, getDoc, updateDoc, collection, getDocs, Timestamp, query, orderBy, where, limit } from 'firebase/firestore';
 
 // ★★★ UserProfileの型定義を最新版に！ ★★★
 interface UserProfile {
@@ -35,13 +36,28 @@ function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true); //
 
   // ★ useNavigateとuseLocationをAppコンポーネントで使う
   const navigate = useNavigate();
   const location = useLocation();
 
-  const fetchTasks = useCallback(async () => {
-    const q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
+  const fetchTasks = useCallback(async (profile: UserProfile | null) => {
+    if (!profile) return;
+
+    let q;
+    // ロールがsupportなら全部、clientなら自分のだけ取得する
+    if (profile.role === 'support') {
+      q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
+    } else {
+      q = query(
+        collection(db, "tasks"),
+        where("requesterEmail", "==", profile.email), // ★ 自分のメアドと一致するタスクだけ！
+        orderBy("createdAt", "desc"),
+        limit(10) // ★ 直近10件だけ！
+      );
+    }
+
     const querySnapshot = await getDocs(q);
     const tasksData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
     setTasks(tasksData);
@@ -49,29 +65,30 @@ function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
       if (currentUser) {
+        setUser(currentUser);
         const userDocRef = doc(db, "users", currentUser.uid);
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
           const profileData = userDocSnap.data() as UserProfile;
           setUserProfile(profileData);
+          await fetchTasks(profileData);
 
-          // ★ ログインした瞬間に、適切なページに飛ばす
           const targetPath = profileData.role === 'support' ? '/admin' : '/client';
-          if (location.pathname === '/' || location.pathname === '/login') { // ログインページにいたらリダイレクト
+          if (location.pathname === '/' || location.pathname === '/login') {
             navigate(targetPath, { replace: true });
           }
         }
-        fetchTasks();
       } else {
+        setUser(null);
         setUserProfile(null);
         setTasks([]);
-        navigate('/'); // ログアウトしたらログインページへ
+        navigate('/');
       }
+      setIsLoading(false); // ★★★ 準備完了！見張り番を解除 ★★★
     });
     return () => unsubscribe();
-  }, [fetchTasks, navigate]); // location.pathnameは依存配列から外すのが一般的たい
+  }, [fetchTasks, navigate]);
 
   const addNewTasks = async (data: {
     requesterName: string;
@@ -102,7 +119,7 @@ function App() {
           transaction.update(counterRef, { lastId: newIdNumber });
         });
       }
-      await fetchTasks();
+      await fetchTasks(userProfile);
     } catch (e) {
       console.error("トランザクションに失敗しました: ", e);
       alert("依頼の登録に失敗しました。");
@@ -228,46 +245,36 @@ function App() {
     }
   };
 
-  if (!user) {
+  // ★★★ 見張り番が「待って！」と言ってる間は、ローディング画面を出す ★★★
+  if (isLoading) {
     return (
-      <Routes>
-        <Route path="/" element={
-          <LoginPage
-            onEmailLogin={handleEmailLogin}
-            onGoogleLogin={handleGoogleLogin}
-            onEmailSignUp={handleEmailSignUp}
-          />}
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <div className="min-h-screen flex items-center justify-center">
+        <div>Loading...</div>
+      </div>
     );
   }
 
   return (
     <div className="bg-gray-100 min-h-screen font-sans text-gray-800">
-      <Header user={user} onLogout={handleLogout} userProfile={userProfile} />
+      {user && userProfile && <Header user={user} onLogout={handleLogout} userProfile={userProfile} />}
       <main className="p-4 sm:p-6 lg:p-8">
         <Routes>
-          <Route path="/client" element={<RequestForm onAddTasks={addNewTasks} userProfile={userProfile} />} />
-          <Route path="/admin" element={<AdminDashboard tasks={tasks} onUpdateTask={handleUpdateTask} />} />
-          <Route path="/profile" element={
-            user && userProfile ? (
-              <ProfilePage
-                user={user}
-                userProfile={userProfile}
-                onUpdateProfile={handleUpdateProfile}
-                onBack={() => navigate(userProfile.role === 'support' ? '/admin' : '/client')}
-              />
-            ) : <Navigate to="/" replace />
-          } />
-          <Route path="/" element={
-            userProfile ? (
-              userProfile.role === 'support' ? <Navigate to="/admin" replace /> : <Navigate to="/client" replace />
-            ) : (
-              <div>Loading...</div>
-            )
-          } />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {!user ? (
+            <>
+              <Route path="/" element={<LoginPage onEmailLogin={handleEmailLogin} onGoogleLogin={handleGoogleLogin} onEmailSignUp={handleEmailSignUp} />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </>
+          ) : userProfile ? (
+            <>
+              <Route path="/client" element={userProfile.role === 'client' ? <ClientDashboard tasks={tasks} userProfile={userProfile} onAddTasks={addNewTasks} /> : <Navigate to="/admin" replace />} />
+              <Route path="/admin" element={userProfile.role === 'support' ? <AdminDashboard tasks={tasks} onUpdateTask={handleUpdateTask} /> : <Navigate to="/client" replace />} />
+              <Route path="/profile" element={<ProfilePage user={user} userProfile={userProfile} onUpdateProfile={handleUpdateProfile} onBack={() => navigate(userProfile.role === 'support' ? '/admin' : '/client')} />} />
+              <Route path="/" element={<Navigate to={userProfile.role === 'support' ? '/admin' : '/client'} replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </>
+          ) : (
+            <Route path="*" element={<div>Loading profile...</div>} />
+          )}
         </Routes>
       </main>
     </div>
