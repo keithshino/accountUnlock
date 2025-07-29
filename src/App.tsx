@@ -21,7 +21,7 @@ import {
   GoogleAuthProvider,
   signOut
 } from 'firebase/auth';
-import { runTransaction, doc, setDoc, getDoc, updateDoc, collection, getDocs, Timestamp, query, orderBy, where, limit } from 'firebase/firestore';
+import { runTransaction, doc, setDoc, getDoc, updateDoc, collection, getDocs, Timestamp, query, orderBy, where, limit, onSnapshot } from 'firebase/firestore';
 
 // ★★★ UserProfileの型定義を最新版に！ ★★★
 interface UserProfile {
@@ -43,7 +43,10 @@ function App() {
   const location = useLocation();
 
   const fetchTasks = useCallback(async (profile: UserProfile | null) => {
-    if (!profile) return;
+    if (!profile) {
+      setTasks([]);
+      return;
+    }
 
     let q;
     // ロールがsupportなら全部、clientなら自分のだけ取得する
@@ -64,31 +67,59 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        const userDocRef = doc(db, "users", currentUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-          const profileData = userDocSnap.data() as UserProfile;
-          setUserProfile(profileData);
-          await fetchTasks(profileData);
+    // プロフィール監視を止めるための関数を、先に準備しておく
+    let unsubscribeProfile = () => { };
 
-          const targetPath = profileData.role === 'support' ? '/admin' : '/client';
-          if (location.pathname === '/' || location.pathname === '/login') {
-            navigate(targetPath, { replace: true });
+    // 認証状態（ログイン・ログアウト）が変わるたびに、この中がぜんぶ動く
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      // ★最重要★ まず、前のユーザーの監視が残っとったら、ここで止める！
+      unsubscribeProfile();
+
+      if (user) {
+        // --- ログインしとる場合 ---
+        setUser(user);
+        setIsLoading(true);
+        const userDocRef = doc(db, "users", user.uid);
+
+        // 新しくプロフィールの監視をスタートして、止めるための関数を更新
+        unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const newProfileData = docSnap.data() as UserProfile;
+            setUserProfile(currentProfile => {
+              if (JSON.stringify(currentProfile) !== JSON.stringify(newProfileData)) {
+                fetchTasks(newProfileData);
+                return newProfileData;
+              }
+              return currentProfile;
+            });
+            const targetPath = newProfileData.role === 'support' ? '/admin' : '/client';
+            if (location.pathname === '/' || location.pathname === '/login') {
+              navigate(targetPath, { replace: true });
+            }
+          } else {
+            console.error("ユーザープロファイルが見つかりません。");
           }
-        }
+          setIsLoading(false);
+        }, (error) => {
+          console.error("プロフィールの監視中にエラー:", error);
+          setIsLoading(false);
+        });
+
       } else {
+        // --- ログアウトしとる場合 ---
         setUser(null);
         setUserProfile(null);
         setTasks([]);
-        navigate('/');
+        setIsLoading(false);
       }
-      setIsLoading(false); // ★★★ 準備完了！見張り番を解除 ★★★
     });
-    return () => unsubscribe();
-  }, [fetchTasks, navigate]);
+
+    // このAppコンポーネント自体が消える時に、両方の監視をしっかり止める
+    return () => {
+      unsubscribeAuth();
+      unsubscribeProfile();
+    };
+  }, [fetchTasks, navigate, location.pathname]);
 
   const addNewTasks = async (data: {
     requesterName: string;
@@ -111,8 +142,8 @@ function App() {
             requesterEmail: data.requesterEmail,
             employeeName: employee.employeeName,
             employeeId: employee.employeeId,
-            status: TaskStatus.NEW,
-            reportStatus: ReportStatus.UNREPORTED,
+            status: '新規受付' as Task['status'],
+            reportStatus: '未報告' as Task['reportStatus'],
             log: '',
           };
           transaction.set(newTaskRef, newTaskData);
@@ -163,7 +194,7 @@ function App() {
         await setDoc(userDocRef, {
           displayName: user.displayName || '名無しさん',
           email: user.email,
-          company: '',
+          company: '株式会社TOKIUM・BTX',
           phone: '',
           role: 'support', // Googleログインはサポート担当
         });
