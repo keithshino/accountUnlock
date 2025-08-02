@@ -188,16 +188,34 @@ function App() {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      const userDocRef = doc(db, "users", user.uid);
-      const userDocSnap = await getDoc(userDocRef);
-      if (!userDocSnap.exists()) {
-        await setDoc(userDocRef, {
-          displayName: user.displayName || '名無しさん',
-          email: user.email,
-          company: '株式会社TOKIUM・BTX',
-          phone: '',
-          role: 'support', // Googleログインはサポート担当
-        });
+
+      // ★★★ ここが新しくなった関所たい！ ★★★
+      // ログインした人のメアドが「@tokium.jp」で終わっとるかチェック！
+      if (user.email && user.email.endsWith('@tokium.jp')) {
+
+        // --- OK！TOKIUMの社員さんやった場合 ---
+        const userDocRef = doc(db, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        // もし、この人が初めてログインしたなら、Firestoreにプロフィールば作る
+        // （この処理は元からあったやつば活かしとるよ）
+        if (!userDocSnap.exists()) {
+          await setDoc(userDocRef, {
+            displayName: user.displayName || '名無しさん',
+            email: user.email,
+            company: '株式会社TOKIUM・BTX', // 会社名はここでOK？
+            phone: '',
+            role: 'support', // TOKIUMの人はサポート担当
+          });
+        }
+        // ログイン成功後は、もともとあるuseEffectが見張っててくれるけん、
+        // 自動で管理画面に連れてってくれるばい！
+
+      } else {
+        // --- NG！TOKIUMの社員さんじゃなかった場合 ---
+        alert("このアプリはTOKIUMの社員さんしか使えんとよ。");
+        // ★★★ 即座にログアウトさせて、門前払いする！超大事！ ★★★
+        await signOut(auth);
       }
     } catch (error) {
       alert("Googleログインに失敗しました。");
